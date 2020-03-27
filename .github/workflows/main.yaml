@@ -71,7 +71,7 @@ jobs:
               if: success()
               run: etc/travis/run-suite before_install "${SYLIUS_SUITE}"
               
-            - mame: Install
+            - name: Install
               if: success()
               run: etc/travis/run-suite install "${SYLIUS_SUITE}"
               
