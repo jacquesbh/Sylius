@@ -10,7 +10,7 @@ on:
 
 env:
     APP_ENV: test_cached
-    SYLIUS_CACHE_DIR: $HOME/.sylius-cache
+    SYLIUS_CACHE_DIR: ${{ env.HOME }}/.sylius-cache
     SYLIUS_BUILD_DIR: etc/build
     SYMFONY_VERSION: "4.4.*"
 
