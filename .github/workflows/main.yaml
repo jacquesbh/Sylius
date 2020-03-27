@@ -1,0 +1,208 @@
+name: Main
+
+on:
+    push:
+        branches: [ github-actions, master ]
+    pull_request:
+        branches: [ master ]
+    schedule:
+        - cron:  '0 0 * * *'
+
+env:
+    APP_ENV: test_cached
+    SYLIUS_CACHE_DIR: $HOME/.sylius-cache
+    SYLIUS_BUILD_DIR: etc/build
+    SYMFONY_VERSION: "4.4.*"
+
+jobs:
+
+    application:
+
+        runs-on: ubuntu-latest
+        
+        env:
+            SYLIUS_SUITE: application
+
+        strategy:
+            fail-fast: false
+            matrix:
+                php: [7.3]
+
+        steps:
+
+            - uses: actions/checkout@v2
+                  
+            - name: Switch PHP
+              run: sudo update-alternatives --set php /usr/bin/php${{ matrix.php }}
+
+            # Init caches
+            - name: Init composer cache
+              uses: actions/cache@v1
+              with:
+                  path: ~/.composer/cache/files
+                  key: application-composer-php.${{ matrix.php }}-${{ github.sha }}
+                  restore-keys: composer-php.${{ matrix.php }}-
+
+            - name: Init pip cache
+              uses: actions/cache@v1
+              with:
+                  path: ~/.cache/pip
+                  key: application-pip-php.${{ matrix.php }}-${{ github.sha }}
+                  restore-keys: application-pip-php.${{ matrix.php }}-
+
+            - run: mkdir -p node_modules
+
+            - name: Init node_modules cache
+              uses: actions/cache@v1
+              with:
+                  path: node_modules
+                  key: application-node_modules-php.${{ matrix.php }}-${{ github.sha }}
+                  restore-keys: application-node_modules-php.${{ matrix.php }}-
+
+            - name: Init Sylius cache
+              uses: actions/cache@v1
+              with:
+                  path: ${SYLIUS_CACHE_DIR}
+                  key: application-sylius-php.${{ matrix.php }}-${{ github.sha }}
+                  restore-keys: application-sylius-php.${{ matrix.php }}-
+                  
+            # Run old Travis CI steps
+            - name: Before install
+              if: success()
+              run: etc/travis/run-suite before_install "${SYLIUS_SUITE}"
+              
+            - mame: Install
+              if: success()
+              run: etc/travis/run-suite install "${SYLIUS_SUITE}"
+              
+            - name: Before script
+              if: success()
+              run: etc/travis/run-suite before_script "${SYLIUS_SUITE}"
+              
+            - name: Script
+              if: success()
+              run: etc/travis/run-suite script "${SYLIUS_SUITE}"
+              
+            - name: After script
+              if: success()
+              run: etc/travis/run-suite after_script "${SYLIUS_SUITE}"
+
+            - name: Before cache
+              if: success()
+              run: etc/travis/run-suite before_cache "${SYLIUS_SUITE}"
+
+            - name: After success
+              if: success()
+              run: etc/travis/run-suite after_success "${SYLIUS_SUITE}"
+            
+            - name: After failure
+              if: failure()
+              run: etc/travis/run-suite after_failure "${SYLIUS_SUITE}"
+
+#    sylius:
+#
+#        runs-on: ubuntu-latest
+#
+#        env:
+#            SYMFONY_ENDPOINT: http://127.0.0.1/
+#
+#        strategy:
+#            fail-fast: false
+#            matrix:
+#                php: [7.2, 7.3]
+#                sylius: [1.3, 1.4, 1.5, 1.6, 1.7]
+#                mariadb_version: [10.3, 10.4]
+#                exclude:
+#                    - php: 7.2
+#                      sylius: 1.7
+#
+#        steps:
+#            - name: Remove HHVM
+#              run: sudo apt-get remove --auto-remove -y hhvm
+#              if: matrix.sylius == 1.3 || matrix.sylius == 1.4
+#
+#            - name: Switch PHP
+#              run: sudo update-alternatives --set php /usr/bin/php${{ matrix.php }}
+#
+#            - name: Show PHP version
+#              run: php -v
+#
+#            - name: Setup timezone
+#              run: |
+#                  echo "date.timezone=UTC" >> /tmp/timezone.ini; \
+#                  sudo mv /tmp/timezone.ini /etc/php/${{ matrix.php }}/cli/conf.d/timezone.ini
+#
+#            - uses: actions/checkout@v2
+#              with:
+#                  path: plugin
+#
+#            # Run the server at the start so it can download the recipes!
+#            - name: Run standalone symfony flex server
+#              run: |
+#                  echo ${{ github.token }} | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+#                  docker run --rm --name flex -d -v $PWD/plugin/recipe:/var/www/flex/var/repo/private/monsieurbiz/sylius-alert-message-plugin -p 80:80 docker.pkg.github.com/monsieurbiz/docker/symfony-flex-server:latest contrib official
+#                  docker ps
+#
+#            - uses: actions/cache@v1
+#              with:
+#                  path: /home/runner/.composer/cache
+#                  key: composer-php.${{ matrix.php }}-sylius.${{ matrix.sylius }}.0-${{ github.sha }}
+#                  restore-keys: composer-php.${{ matrix.php }}-sylius.${{ matrix.sylius }}.0-
+#
+#            - name: Update composer
+#              run: |
+#                  mkdir -p /home/runner/.composer/
+#                  sudo composer self-update --snapshot
+#
+#            - name: Composer Github Auth
+#              run: composer config -g github-oauth.github.com ${{ github.token }}
+#
+#            - name: Install Sylius-Standard
+#              run: |
+#                  composer create-project --prefer-dist --no-scripts --no-progress sylius/sylius-standard sylius "~${{ matrix.sylius }}.0"
+#
+#            - name: Init database
+#              working-directory: ./sylius
+#              run: |
+#                  php bin/console doctrine:database:create --if-not-exists
+#                  php bin/console doctrine:migr:migr -n
+#
+#            - name: Add path repository
+#              working-directory: ./sylius
+#              run: |
+#                  composer config repositories.plugin '{"type": "path", "url": "../plugin/"}'
+#
+#            - name: Allow contrib recipes
+#              working-directory: ./sylius
+#              run: composer config extra.symfony.allow-contrib true
+#
+#            - name: Allow unsecure localhost flex server
+#              working-directory: ./sylius
+#              run: composer config secure-http false
+#
+#            - name: Install plugin
+#              working-directory: ./sylius
+#              run: |
+#                  composer require monsieurbiz/sylius-alert-message-plugin="*@dev"
+#
+#            - name: Show flex server logs
+#              run: docker logs --tail 100 flex
+#
+#            - name: Update database schema
+#              working-directory: ./sylius
+#              run: |
+#                  php bin/console doctrine:migr:diff -vvv
+#                  php bin/console doctrine:migr:migr -n
+#
+#            - name: Install Sylius
+#              working-directory: ./sylius
+#              run: php bin/console sylius:install -n
+
+        services:
+
+            mysql:
+                image: mysql:5.7
+                ports:
+                    - 3306:3306
+                env:
+                    MYSQL_ALLOW_EMPTY_PASSWORD: true
