@@ -42,33 +42,48 @@ jobs:
             # Init caches
             - name: Init composer cache
               uses: actions/cache@v1
+              id: cache-composer
               with:
                   path: ~/.composer/cache/files
                   key: application-composer-php.${{ matrix.php }}-${{ github.sha }}
                   restore-keys: composer-php.${{ matrix.php }}-
+                  
+            - run: mkdir -p ~/.composer/cache/files
+              if: steps.cache-composer.outputs.cache-hit != 'true'
 
             - name: Init pip cache
               uses: actions/cache@v1
+              id: cache-pip
               with:
                   path: ~/.cache/pip
                   key: application-pip-php.${{ matrix.php }}-${{ github.sha }}
                   restore-keys: application-pip-php.${{ matrix.php }}-
+                  
+            - run: mkdir -p ~/.cache/pip
+              if: steps.cache-pip.outputs.cache-hit != 'true'
 
-            - run: mkdir -p node_modules
             - name: Init node_modules cache
               uses: actions/cache@v1
+              id: cache-node-modules
               with:
                   path: node_modules
                   key: application-node_modules-php.${{ matrix.php }}-${{ github.sha }}
                   restore-keys: application-node_modules-php.${{ matrix.php }}-
+                  
+            - run: mkdir node_modules
+              if: steps.cache-node-modules.outputs.cache-hit != 'true'
 
             - run: mkdir -p ${SYLIUS_CACHE_DIR}
             - name: Init Sylius cache
               uses: actions/cache@v1
+              id: cache-sylius
               with:
                   path: ${SYLIUS_CACHE_DIR}
                   key: application-sylius-php.${{ matrix.php }}-${{ github.sha }}
                   restore-keys: application-sylius-php.${{ matrix.php }}-
+                  
+            - run: mkdir -p ${SYLIUS_CACHE_DIR}
+              if: steps.cache-sylius.outputs.cache-hit != 'true'
                   
             # Run old Travis CI steps
             - name: Before install
