@@ -13,7 +13,7 @@ env:
     SYLIUS_CACHE_DIR: $HOME/.sylius-cache
     SYLIUS_BUILD_DIR: etc/build
     SYMFONY_VERSION: "4.4.*"
-    
+
     # XXX
     TRAVIS_BRANCH: master
     TRAVIS_PULL_REQUEST: false
@@ -55,7 +55,6 @@ jobs:
                   restore-keys: application-pip-php.${{ matrix.php }}-
 
             - run: mkdir -p node_modules
-
             - name: Init node_modules cache
               uses: actions/cache@v1
               with:
@@ -63,6 +62,7 @@ jobs:
                   key: application-node_modules-php.${{ matrix.php }}-${{ github.sha }}
                   restore-keys: application-node_modules-php.${{ matrix.php }}-
 
+            - run: mkdir -p ${SYLIUS_CACHE_DIR}
             - name: Init Sylius cache
               uses: actions/cache@v1
               with:
