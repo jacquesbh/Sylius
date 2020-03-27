@@ -13,6 +13,10 @@ env:
     SYLIUS_CACHE_DIR: $HOME/.sylius-cache
     SYLIUS_BUILD_DIR: etc/build
     SYMFONY_VERSION: "4.4.*"
+    
+    # XXX
+    TRAVIS_BRANCH: master
+    TRAVIS_PULL_REQUEST: false
 
 jobs:
 
